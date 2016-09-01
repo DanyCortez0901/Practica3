@@ -14,7 +14,8 @@ import java.util.Iterator;
  *       descendientes por la derecha.</li>
  * </ul>
  */
-public class ArbolBinarioOrdenado<T extends Comparable<T>> extends ArbolBinario<T> {
+public class ArbolBinarioOrdenado<T extends Comparable<T>>
+    extends ArbolBinario<T> {
 
     /* Clase privada para iteradores de árboles binarios ordenados. */
     private class Iterador implements Iterator<T> {
@@ -24,34 +25,27 @@ public class ArbolBinarioOrdenado<T extends Comparable<T>> extends ArbolBinario<
 
         /* Construye un iterador con el vértice recibido. */
         public Iterador() {
-            start();
+          pila= new Pila<ArbolBinario<T>.Vertice>();
+          rellena(raiz);
+        }
+        private void rellena(Vertice v){
+          if(v==null)
+          return;
+          rellena(v.derecho);
+          pila.mete(v);
+          rellena(v.izquierdo);
         }
 
         /* Nos dice si hay un siguiente elemento. */
         @Override public boolean hasNext() {
-            return !pila.esVacia();
-
+          if(pila.esVacia())
+            return false;
+          return true;
         }
+
         /* Regresa el siguiente elemento del árbol en orden. */
         @Override public T next() {
-            Vertice vertice = pila.saca();
-            T e = vertice.get();
-            vertice = vertice.derecho;
-            while (vertice != null) {
-                pila.mete(vertice);
-                vertice = vertice.izquierdo;
-            }
-            return e;
-        }
-
-        private void start(){
-            pila = new Pila<>();
-            pila.mete(raiz);
-            Vertice vertice = raiz;
-            while (vertice.hayIzquierdo()) {
-                pila.mete(vertice.izquierdo);
-                vertice = vertice.izquierdo;
-            }
+          return  pila.saca().elemento;
         }
 
         /* No lo implementamos: siempre lanza una excepción. */
@@ -81,29 +75,36 @@ public class ArbolBinarioOrdenado<T extends Comparable<T>> extends ArbolBinario<
      * @param elemento el elemento a agregar.
      */
     @Override public void agrega(T elemento) {
-        if (raiz == null)
-            raiz = ultimoAgregado = nuevoVertice(elemento);
-        else
-            agrega(raiz, elemento);
-        elementos++;
-    }
 
-    private void agrega(Vertice vertice, T elemento) {
-        if (elemento.compareTo(vertice.get()) < 0)
-            if (!vertice.hayIzquierdo()) {
-                Vertice verticeNuevo = nuevoVertice(elemento);
-                verticeNuevo.padre = vertice;
-                vertice.izquierdo = ultimoAgregado = verticeNuevo;
-            } else
-                agrega(vertice.izquierdo, elemento);
-        else
-            if (!vertice.hayDerecho()) {
-                Vertice verticeNuevo = nuevoVertice(elemento);
-                verticeNuevo.padre = vertice;
-                vertice.derecho = ultimoAgregado = verticeNuevo;
-            } else
-                agrega(vertice.derecho, elemento);
-    }
+      Vertice aux= nuevoVertice(elemento);
+      elementos++;
+      ultimoAgregado=aux;
+      if(raiz==null)
+        raiz=aux;
+     else
+        agrega(raiz,aux);
+  }
+  private void agrega(Vertice v, Vertice e) {
+
+      if(e.elemento.compareTo(v.elemento)<=0){
+         if(v.izquierdo==null){
+          v.izquierdo=e;
+          e.padre=v;
+        } else{
+          agrega(v.izquierdo,e);}
+        }
+        else{
+          if(v.derecho==null){
+            v.derecho=e;
+            e.padre=v;
+          }
+          else{
+            agrega(v.derecho,e);}
+}
+
+
+
+}
 
     /**
      * Elimina un elemento. Si el elemento no está en el árbol, no hace nada; si
@@ -112,62 +113,46 @@ public class ArbolBinarioOrdenado<T extends Comparable<T>> extends ArbolBinario<
      * @param elemento el elemento a eliminar.
      */
     @Override public void elimina(T elemento) {
-        Vertice vertice = busca(raiz, elemento);
-
-        if (vertice == null)
-            return;
-        //Cuando es una arbol que tiene izquierda, me tomo el maximo subarbol
-        //izquierdo para intercambiar los contenidos con el maximo y el
-        //elemento a eliminar, para no lidiar con las referencias. Y de esta
-        //forma cuando el vertice que quiero eliminar o es hoja o es esta en un "chorizo".
-        if (vertice.hayIzquierdo()) {
-            //Vertice auxiliar que apunte a el elemento a eliminar.
-            Vertice aux = vertice;
-            //Vertice a eliminar igual al maximo subarbol.
-            vertice = maximoEnSubarbol(vertice.izquierdo);
-            //Intercambio elementos
-            aux.elemento = vertice.elemento;
-        }
-        //Este caso contempla cuando es hoja o raiz sin hijos.
-        if (esHoja(vertice))
-            //Si es la raiz, pone todo en null.
-            if (vertice == raiz)
-                raiz = ultimoAgregado = null;
-        //En otro caso solomante corta la conexion con las hojas.
-            else if (esHijoIzquierdo(vertice))
-                vertice.padre.izquierdo = vertice.padre = null;
-            else
-                vertice.padre.derecho = vertice.padre = null;
-        //En el caso de que es todo un "chorizo" con hijo(s) izquierdos.
-        else if (vertice.hayIzquierdo())
-            //En este caso solamente sube y elimina el elemento que esta en la raiz.
-            if (vertice == raiz) {
-                raiz = vertice.izquierdo;
-                raiz.padre = null;
-            } else {
-                //El que se quiere elimiar esta entre vertices.
-                vertice.izquierdo.padre = vertice.padre;
-                if (esHijoIzquierdo(vertice))
-                    vertice.padre.izquierdo = vertice.izquierdo;
-                else
-                    vertice.padre.derecho = vertice.izquierdo;
-            }
-        //En el caso de que se todo un "chorizo" con hijo(s) derechos.
+      Vertice eliminar=busca(raiz,elemento);
+      if(eliminar==null)
+      return;
+        if(raiz==eliminar && elementos==1)
+        raiz=null;
         else
-            //En este caso solamente sube y elimina el elemento que esta en la raiz.
-            if (vertice == raiz) {
-                raiz = raiz.derecho;
-                raiz.padre = null;
-            } else {
-                //El que se quiere elimiar esta entre vertices.
-                vertice.derecho.padre = vertice.padre;
-                if (esHijoIzquierdo(vertice))
-                    vertice.padre.izquierdo = vertice.derecho;
-                else
-                    vertice.padre.derecho = vertice.derecho;
-            }
-        elementos--;
-    }
+        if (eliminar.derecho==null && eliminar.izquierdo==null)
+          if(eliminar.padre.derecho==eliminar)
+              eliminar.padre.derecho=null;
+            else
+              eliminar.padre.izquierdo=null;
+          else
+          if(eliminar.izquierdo==null){
+            if(eliminar.padre==null){
+                raiz=eliminar.derecho;
+                raiz.padre=null;
+            } else{
+              eliminar.derecho.padre=eliminar.padre;
+              if(eliminar.padre.izquierdo==eliminar)
+                eliminar.padre.izquierdo=eliminar.derecho;
+              else
+                eliminar.padre.derecho=eliminar.derecho;
+              }
+          }
+        else{
+         Vertice aux=maximoEnSubarbol(eliminar.izquierdo);
+         eliminar.elemento=aux.elemento;
+         if(aux.padre.izquierdo==aux)
+           aux.padre.izquierdo=aux.izquierdo;
+         else
+           aux.padre.derecho=aux.izquierdo;
+         if(aux.izquierdo!=null)
+           aux.izquierdo.padre=aux.padre;
+      }
+
+    if(ultimoAgregado==eliminar)
+      ultimoAgregado=null;
+    elementos--;
+  }
+
 
     /**
      * Busca recursivamente un elemento, a partir del vértice recibido.
@@ -178,13 +163,17 @@ public class ArbolBinarioOrdenado<T extends Comparable<T>> extends ArbolBinario<
      *         el árbol; <code>null</code> en otro caso.
      */
     @Override protected Vertice busca(Vertice vertice, T elemento) {
-        if (vertice == null || elemento == null)
-            return null;
-        if (elemento.compareTo(vertice.get()) == 0)
-            return vertice;
-        if (elemento.compareTo(vertice.get()) < 0)
-            return busca(vertice.izquierdo, elemento);
-        return busca(vertice.derecho, elemento);
+
+      if (vertice==null)
+        return null;
+      if((vertice.elemento.compareTo(elemento))==0)
+        return vertice;
+      if(elemento.compareTo(vertice.elemento)<0)
+        return busca(vertice.izquierdo,elemento);
+      return busca(vertice.derecho, elemento);
+
+
+
     }
 
     /**
@@ -195,9 +184,10 @@ public class ArbolBinarioOrdenado<T extends Comparable<T>> extends ArbolBinario<
      * @return el vértice máximo el subárbol cuya raíz es el vértice que recibe.
      */
     protected Vertice maximoEnSubarbol(Vertice vertice) {
-        while (vertice.hayDerecho())
-            vertice = vertice.derecho;
+
+      if(vertice.derecho==null)
         return vertice;
+      return maximoEnSubarbol(vertice.derecho);
     }
 
     /**
@@ -213,28 +203,24 @@ public class ArbolBinarioOrdenado<T extends Comparable<T>> extends ArbolBinario<
      * tiene hijo izquierdo, el método no hace nada.
      * @param vertice el vértice sobre el que vamos a girar.
      */
-    public void giraDerecha(VerticeArbolBinario<T> v) {
-        if (v == null || !v.hayIzquierdo())
-            return;
-
-        Vertice vertice = vertice(v);
-        Vertice verticeIzq = vertice.izquierdo;
-
-        verticeIzq.padre = vertice.padre;
-        if(!esRaiz(vertice))
-            if(esHijoIzquierdo(vertice))
-                vertice.padre.izquierdo = verticeIzq;
-            else
-                vertice.padre.derecho = verticeIzq;
+    public void giraDerecha(VerticeArbolBinario<T> vertice) {
+      Vertice ver=vertice(vertice); //esta muy gracioso XD
+      if(ver.izquierdo==null)
+        return;
+      Vertice tice=ver.izquierdo;
+      tice.padre=ver.padre;
+      if(ver.padre!=null)
+          if(ver.padre.derecho==ver)
+            ver.padre.derecho=tice;
+          else
+            ver.padre.izquierdo=tice;
         else
-            raiz = verticeIzq;
-
-        vertice.izquierdo = verticeIzq.derecho;
-        if(verticeIzq.hayDerecho())
-            verticeIzq.derecho.padre = vertice;
-
-        verticeIzq.derecho = vertice;
-        vertice.padre = verticeIzq;
+          raiz=tice;
+        ver.izquierdo=tice.derecho;
+        if(tice.derecho!=null)
+          tice.derecho.padre=ver;
+        tice.derecho=ver;
+        ver.padre=tice;
     }
 
     /**
@@ -242,36 +228,24 @@ public class ArbolBinarioOrdenado<T extends Comparable<T>> extends ArbolBinario<
      * tiene hijo derecho, el método no hace nada.
      * @param vertice el vértice sobre el que vamos a girar.
      */
-    public void giraIzquierda(VerticeArbolBinario<T> v) {
-        if (v == null || !v.hayDerecho())
-            return;
-        Vertice vertice = vertice(v);
-        //Se toma al hijo derecho del vertice a girar, siempre se tiene a ese hijo
-        //por que si no lo tiene no se podra girar.
-        Vertice verticeDer = vertice.derecho;
-        //Hacemos que nuestro verticeDer apunte al padre del vertice
-        //de esta forma no nos preocupamos si es raiz o no.
-        verticeDer.padre = vertice.padre;
-
-        if (!esRaiz(vertice))
-            //Si no es raiz solo enlazamos del lado de donde venga. 
-            if (esHijoIzquierdo(vertice))
-                vertice.padre.izquierdo = verticeDer;
-            else
-                vertice.padre.derecho = verticeDer;
-        //En caso que sea raiz
+    public void giraIzquierda(VerticeArbolBinario<T> vertice) {
+      Vertice ver=vertice(vertice); //esta muy gracioso XD
+      if(ver.derecho==null)
+        return;
+      Vertice tice=ver.derecho;
+      tice.padre=ver.padre;
+      if(ver.padre!=null)
+          if(ver.padre.izquierdo==ver)
+            ver.padre.izquierdo=tice;
+          else
+            ver.padre.derecho=tice;
         else
-            raiz = verticeDer;
-
-        //El vertice a girar su hijo derecho es el vertice izquierdo del
-        //verticeDer.izquierdo, tambien no nos preocupamos si es null.
-        vertice.derecho = verticeDer.izquierdo;
-        if (verticeDer.hayIzquierdo())
-            //Si verticeDer si tiene hijo izquierdo entonces lo enlazamos con el vertice.
-            verticeDer.izquierdo.padre = vertice;
-        //Al final solo le enlazamos al verticeDer su hijo derecho el 
-        //vertice el cual se iba a girar.
-        verticeDer.izquierdo = vertice;
-        vertice.padre = verticeDer;
+          raiz=tice;
+        ver.derecho=tice.izquierdo;
+        if(tice.izquierdo!=null)
+          tice.izquierdo.padre=ver;
+        tice.izquierdo=ver;
+        ver.padre=tice;
     }
 }
+
