@@ -6,7 +6,8 @@ package mx.unam.ciencias.edd;
  * <p>Un árbol AVL cumple que para cada uno de sus vértices, la diferencia entre
  * la áltura de sus subárboles izquierdo y derecho está entre -1 y 1.</p>
  */
-public class ArbolAVL<T extends Comparable<T>> extends ArbolBinarioOrdenado<T> {
+public class ArbolAVL<T extends Comparable<T>>
+    extends ArbolBinarioOrdenado<T> {
 
     /**
      * Clase interna protegida para vértices de árboles AVL. La única diferencia
@@ -23,8 +24,8 @@ public class ArbolAVL<T extends Comparable<T>> extends ArbolBinarioOrdenado<T> {
          * @param elemento el elemento del vértice.
          */
         public VerticeAVL(T elemento) {
-            super(elemento);
-            altura = 0;
+          super(elemento);
+          this.altura=0;
         }
 
         /**
@@ -32,7 +33,8 @@ public class ArbolAVL<T extends Comparable<T>> extends ArbolBinarioOrdenado<T> {
          * @return una representación en cadena del vértice AVL.
          */
         public String toString() {
-            return String.format("%s %d/%d", elemento.toString(), altura, balance(this));
+          return elemento + " " + altura + "/" + balance(this);
+
         }
 
         /**
@@ -46,25 +48,12 @@ public class ArbolAVL<T extends Comparable<T>> extends ArbolBinarioOrdenado<T> {
          *         otro caso.
          */
         @Override public boolean equals(Object o) {
-            if (o == null || raiz == null || getClass() != o.getClass())
+            if (o == null)
+                return false;
+            if (getClass() != o.getClass())
                 return false;
             @SuppressWarnings("unchecked") VerticeAVL vertice = (VerticeAVL)o;
-            return raiz.get().equals(vertice.get()) && verticeAVL(raiz).altura == vertice.altura
-                   && equals(verticeAVL(raiz.izquierdo), verticeAVL(vertice.izquierdo))
-                   && equals(verticeAVL(raiz.derecho), verticeAVL(vertice.derecho));
-        }
-
-        private boolean equals(VerticeAVL a, VerticeAVL b) {
-            //En el caso de que vertices de un nodo y ambos no tengas hijos.
-            if (a == null && b == null)
-                return true;
-            //Si los vertices hijos son diferentes.
-            else if (a != null && b == null || a == null && b != null)
-                return false;
-            //Compara el elemento y despues a sus hijos por izquierda y
-            return a.get().equals(b.get()) && verticeAVL(a).altura == b.altura
-                   && equals(verticeAVL(a.izquierdo), verticeAVL(b.izquierdo))
-                   && equals(verticeAVL(a.derecho), verticeAVL(b.derecho));
+            return super.equals(vertice) && this.altura==vertice.altura;
         }
     }
 
@@ -77,32 +66,102 @@ public class ArbolAVL<T extends Comparable<T>> extends ArbolBinarioOrdenado<T> {
      */
     @Override public void agrega(T elemento) {
         super.agrega(elemento);
-        rebalanceo(verticeAVL(ultimoAgregado));
+        VerticeAVL v=verticeAVL(ultimoAgregado);
+        rebalanceado(v);
     }
 
-    private void rebalanceo(VerticeAVL vertice) {
-        if (vertice == null)
-            return;
+    /**
+     * Elimina un elemento del árbol. El método elimina el vértice que contiene
+     * el elemento, y gira el árbol como sea necesario para rebalancearlo. La
+     * complejidad en tiempo del método es <i>O</i>(log <i>n</i>) garantizado.
+     * @param elemento el elemento a eliminar del árbol.
+     */
+    @Override public void elimina(T elemento) {
+      VerticeAVL v=verticeAVL(busca(raiz,elemento));
+      if(v==null){
+          return;
+      }
 
-        cambiaAltura(vertice);
+      VerticeAVL hijo=new VerticeAVL(null);
+      if(v.izquierdo!=null){
+        VerticeAVL maximo=verticeAVL(maximoEnSubarbol(v.izquierdo));
+        intercambia(maximo,v);
+        v=maximo;
+      }
 
-        if (balance(vertice) == -2) {
-            if (balance(verticeAVL(vertice.derecho)) == 1)
-                giraDerechaAVL(verticeAVL(vertice.derecho));
+      if(v.izquierdo==null && v.derecho==null){
+        if (v==raiz) {
+         raiz=null;
+         ultimoAgregado =null;
+     } else if (v.padre.izquierdo==v)
+         v.padre.izquierdo=null;
+       else
+         v.padre.derecho=null;
+     }
+      else
+      if(v.izquierdo!=null){
+          v.izquierdo.padre=v.padre;
+          if(v.padre.derecho==v)
+            v.padre.derecho=v.izquierdo;
+          else
+            v.padre.izquierdo=v.izquierdo;
+          hijo=verticeAVL(v.izquierdo);
+      }else{
+        v.derecho.padre=v.padre;
+        if(v.padre.derecho==v)
+          v.padre.derecho=v.derecho;
+        else
+          v.padre.izquierdo=v.derecho;
+        hijo=verticeAVL(v.derecho);
+      }
 
-            giraIzquierdaAVL(vertice);
-        } else if (balance(vertice) == 2) {
-            if (balance(verticeAVL(vertice.izquierdo)) == -1)
-                giraIzquierdaAVL(verticeAVL(vertice.izquierdo));
+        rebalanceado(verticeAVL(v.padre));
+        elementos--;
 
-            giraDerechaAVL(vertice);
+    }
+    private void intercambia(Vertice ver,Vertice tice){
+       T aux = ver.elemento;
+      ver.elemento=tice.elemento;
+      tice.elemento=aux;
+    }
+    //auxiliar para calcular balance
+    private int balance(VerticeAVL vertice){
+      if(vertice==null)
+        return 0;
+      return  getAltura(verticeAVL(vertice.izquierdo)) - getAltura(verticeAVL(vertice.derecho));
+    }
+
+    //Metodo que acualiza la altura
+    private void actualizaAltura(VerticeAVL vertice){
+      if (vertice==null)
+         return;
+       vertice.altura=Math.max(getAltura(verticeAVL(vertice.izquierdo)) , getAltura(verticeAVL(vertice.derecho))) + 1;
+  }
+
+    //auxiliar de rebalanceo
+    private void rebalanceado(VerticeAVL v){
+      if(v==null)
+        return;
+      VerticeAVL derecho=verticeAVL(v.derecho),izquierdo=verticeAVL(v.izquierdo);
+      actualizaAltura(v);
+      if(balance(v)==-2){
+        if(balance(derecho)==1){
+          super.giraDerecha(derecho);
+          actualizaAltura(derecho);
+          actualizaAltura(verticeAVL(derecho.padre));
         }
-        
-        rebalanceo(verticeAVL(vertice.padre));
-    }
-
-    private void cambiaAltura(VerticeAVL vertice) {
-        vertice.altura = getAlturaCalculada(vertice);
+        super.giraIzquierda(v);
+      }
+      if(balance(v)==2){
+        if(balance(izquierdo)==-1){
+          super.giraIzquierda(izquierdo);
+          actualizaAltura(izquierdo);
+          actualizaAltura(verticeAVL(izquierdo.padre));
+        }
+        super.giraDerecha(v);
+      }
+      actualizaAltura(v);
+      rebalanceado(verticeAVL(v.padre));
     }
 
     /**
@@ -113,102 +172,10 @@ public class ArbolAVL<T extends Comparable<T>> extends ArbolBinarioOrdenado<T> {
      *         VerticeAVL}.
      */
     public int getAltura(VerticeArbolBinario<T> vertice) {
-        return vertice == null ? -1 : verticeAVL(vertice).altura;
+      if(vertice ==null)
+        return -1;
+      return verticeAVL(vertice).altura;
     }
-
-    private int getAlturaCalculada(VerticeAVL vertice) {
-        return 1 + Math.max(getAltura(verticeAVL(vertice.izquierdo)), getAltura(verticeAVL(vertice.derecho)));
-    }
-
-    private int balance(VerticeAVL vertice) {
-        return getAltura(verticeAVL(vertice.izquierdo)) - getAltura(verticeAVL(vertice.derecho));
-    }
-
-    private void giraIzquierdaAVL(VerticeAVL vertice){
-        super.giraIzquierda(vertice);
-        cambiaAltura(vertice);
-        cambiaAltura(verticeAVL(vertice.padre));
-    }
-
-    private void giraDerechaAVL(VerticeAVL vertice){
-        super.giraDerecha(vertice);
-        cambiaAltura(vertice);
-        cambiaAltura(verticeAVL(vertice.padre));
-    }
-
-    /**
-     * Elimina un elemento del árbol. El método elimina el vértice que contiene
-     * el elemento, y gira el árbol como sea necesario para rebalancearlo. La
-     * complejidad en tiempo del método es <i>O</i>(log <i>n</i>) garantizado.
-     * @param elemento el elemento a eliminar del árbol.
-     */
-    @Override public void elimina(T elemento) {
-        VerticeAVL vertice = verticeAVL(busca(raiz, elemento));
-
-        if (vertice == null)
-            return;
-        //Cuando es una arbol que tiene izquierda, me tomo el maximo subarbol
-        //izquierdo para intercambiar los contenidos con el maximo y el
-        //elemento a eliminar, para no lidiar con las referencias. Y de esta
-        //forma cuando el vertice que quiero eliminar o es hoja o es esta en un "chorizo".
-        if (vertice.hayIzquierdo()) {
-            //Vertice auxiliar que apunte a el elemento a eliminar.
-            VerticeAVL aux = vertice;
-            //Vertice a eliminar igual al maximo subarbol.
-            vertice = verticeAVL(maximoEnSubarbol(vertice.izquierdo));
-            //Intercambio elementos
-            aux.elemento = vertice.elemento;
-        }
-        if (esHoja(vertice))
-            eliminaHoja(vertice);
-        else
-            subirHijo(vertice);
-        
-        rebalanceo(verticeAVL(vertice.padre));
-        elementos--;
-    }
-
-    private void eliminaHoja(VerticeAVL vertice) {
-        //Si es la raiz, pone todo en null.
-        if (vertice == raiz)
-            raiz = ultimoAgregado = null;
-        //En otro caso solomante corta la conexion con las hojas.
-        else if (esHijoIzquierdo(vertice))
-            vertice.padre.izquierdo = null;
-        else
-            vertice.padre.derecho = null;
-    }
-
-    private void subirHijo(VerticeAVL vertice) {
-        if (vertice.hayIzquierdo())
-            //En este caso solamente sube y elimina el elemento que esta en la raiz.
-            if (vertice == raiz) {
-                raiz = vertice.izquierdo;
-                raiz.padre = null;
-            } else {
-                //El que se quiere elimiar esta entre vertices.
-                vertice.izquierdo.padre = vertice.padre;
-                if (esHijoIzquierdo(vertice))
-                    vertice.padre.izquierdo = vertice.izquierdo;
-                else
-                    vertice.padre.derecho = vertice.izquierdo;
-            }
-        //En el caso de que se todo un "chorizo" con hijo(s) derechos.
-        else
-            //En este caso solamente sube y elimina el elemento que esta en la raiz.
-            if (vertice == raiz) {
-                raiz = raiz.derecho;
-                raiz.padre = null;
-            } else {
-                //El que se quiere elimiar esta entre vertices.
-                vertice.derecho.padre = vertice.padre;
-                if (esHijoIzquierdo(vertice))
-                    vertice.padre.izquierdo = vertice.derecho;
-                else
-                    vertice.padre.derecho = vertice.derecho;
-            }
-    }
-
 
     /**
      * Lanza la excepción {@link UnsupportedOperationException}: los árboles AVL
@@ -258,5 +225,5 @@ public class ArbolAVL<T extends Comparable<T>> extends ArbolBinarioOrdenado<T> {
     protected VerticeAVL verticeAVL(VerticeArbolBinario<T> vertice) {
         return (VerticeAVL)vertice;
     }
-
 }
+
